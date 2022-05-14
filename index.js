@@ -10,14 +10,26 @@ app.use(cors());
 app.use(express.json());
 
 
-const uri = "mongodb+srv://doctorsuser:<password>@cluster0.4g4hk.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4g4hk.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
-client.connect(err => {
-    const serviceCollection = client.db("doctors").collection("services");
-    // perform actions on the collection object
-    console.log('database connected');
-    client.close();
-});
+
+async function run() {
+    try {
+        await client.connect();
+        const serviceCollection = client.db('doctors').collection('services');
+
+        app.get('/services', async (req, res) => {
+            const query = {};
+            const cursor = serviceCollection.find(query);
+            const user = await cursor.toArray();
+            res.send(user);
+        })
+    }
+    finally {
+
+    }
+}
+run().catch(console.dir);
 
 
 app.get('/', (req, res) => {
