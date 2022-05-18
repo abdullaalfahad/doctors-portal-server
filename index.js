@@ -26,6 +26,32 @@ async function run() {
             res.send(user);
         })
 
+        app.get('/available', async (req, res) => {
+            const date = req.query.date || 'May 17, 2022';
+
+            // get all services
+            const services = await serviceCollection.find().toArray();
+
+            // get all booking of that day
+            const query = { date: date };
+            const bookings = await bookingCollection.find(query).toArray();
+
+            // for each service
+            services.forEach(service => {
+                //find booking for that service
+                const serviceBookings = bookings.filter(book => book.treatment === service.name);
+
+                // select slots for service booking
+                const bookedSlots = serviceBookings.map(book => book.slot);
+
+                // select those slots that are not bookedSlots
+                const available = service.slots.filter(slot => !bookedSlots.includes(slot));
+                service.slots = available;
+            })
+
+            res.send(services);
+        })
+
         app.post('/booking', async (req, res) => {
             const booking = req.body;
             const query = { treatment: booking.treatment, date: booking.date, patientName: booking.patientName };
