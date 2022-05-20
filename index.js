@@ -5,6 +5,7 @@ const cors = require('cors');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const jwt = require('jsonwebtoken');
+const res = require('express/lib/response');
 
 // middleware
 app.use(cors());
@@ -87,6 +88,11 @@ async function run() {
             const doctor = req.body;
             const result = await doctorCollection.insertOne(doctor);
             res.send(result);
+        })
+
+        app.get('/doctor', verifyJWT, verifyAdmin, async (req, res) => {
+            const doctors = await doctorCollection.find().toArray();
+            res.send(doctors);
         })
 
         app.get('/services', async (req, res) => {
