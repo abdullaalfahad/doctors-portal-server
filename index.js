@@ -7,6 +7,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const sgTransport = require('nodemailer-sendgrid-transport');
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
 
 // middleware
 app.use(cors());
@@ -77,6 +78,7 @@ async function run() {
         const bookingCollection = client.db('doctors').collection('booking');
         const userCollection = client.db('doctors').collection('users');
         const doctorCollection = client.db('doctors').collection('doctor');
+        const paymentCollection = client.db('doctors').collection('payment');
 
         const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
@@ -140,6 +142,32 @@ async function run() {
             const filter = { email: email };
             const result = await doctorCollection.deleteOne(filter);
             res.send(result);
+        })
+
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                payment_method_types: ['card'],
+            });
+            res.send({ clientSecret: paymentIntent.client_secret });
+        })
+
+        app.patch('/booking/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const payment = req.body;
+            const filter = { _id: ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId
+                }
+            }
+            const result = await paymentCollection.insertOne(payment);
+            const updatedBooking = await bookingCollection.updateOne(filter, updateDoc);
+            res.send(updatedBooking);
         })
 
         app.get('/services', async (req, res) => {
