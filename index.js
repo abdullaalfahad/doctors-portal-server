@@ -95,6 +95,13 @@ async function run() {
             res.send(doctors);
         })
 
+        app.delete('/doctor/:email', verifyJWT, verifyAdmin, async (req, res) => {
+            const email = req.params.email;
+            const filter = { email: email };
+            const result = await doctorCollection.deleteOne(filter);
+            res.send(result);
+        })
+
         app.get('/services', async (req, res) => {
             const query = {};
             const cursor = serviceCollection.find(query).project({ name: 1 });
