@@ -5,7 +5,8 @@ const cors = require('cors');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const jwt = require('jsonwebtoken');
-const res = require('express/lib/response');
+const nodemailer = require('nodemailer');
+const sgTransport = require('nodemailer-sendgrid-transport');
 
 // middleware
 app.use(cors());
@@ -27,6 +28,45 @@ function verifyJWT(req, res, next) {
         }
         req.decoded = decoded;
         next();
+    });
+}
+
+var emailOptions = {
+    auth: {
+        api_key: process.env.EMAIL_SENDER_KEY
+    }
+}
+
+var EmailClient = nodemailer.createTransport(sgTransport(emailOptions));
+
+function sendAppointmentEmail({ booking }) {
+    const { patientEmail, patientName, treatment, date, slot } = booking;
+
+    var email = {
+        from: process.env.Email_Sender,
+        to: patientEmail,
+        subject: `Your Appointment for ${treatment} is on ${date} at ${slot} confirmed`,
+        text: `Your Appointment for ${treatment} is on ${date} ${slot} confirmed`,
+        html: `
+            <div>
+                <p>Hello ${patientName}, </p>
+                <h2>Your appointment for ${treatment} is confirmed</h2>
+                <p>Looking forward to seeing you on ${date} at ${slot}</p>
+
+                <h4>Our Address</h4>
+                <p>Babur Road, Dhaka</p>
+                <p>Bangladesh</p>
+            </div>
+        `
+    };
+
+    EmailClient.sendMail(email, function (err, info) {
+        if (err) {
+            console.log(err);
+        }
+        else {
+            console.log('Message sent: ', info);
+        }
     });
 }
 
@@ -157,6 +197,7 @@ async function run() {
                 return res.send({ success: false, booking: exists });
             }
             const result = await bookingCollection.insertOne(booking);
+            sendAppointmentEmail({ booking });
             return res.send({ success: true, result });
         })
     }
